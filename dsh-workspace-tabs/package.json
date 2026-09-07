@@ -1,0 +1,30 @@
+{
+  "name": "dsh-workspace-tabs",
+  "version": "0.1.0",
+  "description": "Browser-tab workspace switcher for the DeepSeek Harness Web GUI: workspaces across the top, sessions of the selected workspace down the left",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "platform": "web",
+      "inject": [
+        "slots",
+        "sessions",
+        "workspaces"
+      ]
+    }
+  },
+  "files": ["lib", "README.md"],
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2"
+  },
+  "license": "MIT"
+}
