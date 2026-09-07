@@ -1,0 +1,142 @@
+import {
+	authorityMatches,
+	isLoopbackHostname,
+	isTrustedRequest,
+	collectZipEntries,
+	isUploadTempName,
+	normalizeInput,
+	relativeFrom,
+	resolveExisting,
+	resolveNewFile,
+	resolveRename,
+	sanitizeRelative,
+	safeFilename,
+	zipArchiveName,
+} from "../lib/policy.js";
+import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { realpath } from "node:fs/promises";
+
+let failures = 0;
+function assert(cond, label) {
+	if (cond) console.log("  ok  " + label);
+	else {
+		failures++;
+		console.log("FAIL  " + label);
+	}
+}
+
+{
+	assert(normalizeInput("  a/b  ") === "a/b", "normalize trims");
+	assert(normalizeInput("'quoted'") === "quoted", "normalize strips quotes");
+	assert(normalizeInput("") === null, "empty rejected by default");
+	assert(normalizeInput("", { allowEmpty: true }) === "", "empty allowed when asked");
+	assert(normalizeInput(".\0x") === null, "NUL rejected");
+	assert(normalizeInput("x".repeat(5000)) === null, "oversize rejected");
+}
+
+{
+	assert(sanitizeRelative("foo.txt") === "foo.txt", "plain name");
+	assert(sanitizeRelative("sub/dir/file.txt") === "sub/dir/file.txt", "nested relative");
+	assert(sanitizeRelative("a\\b") === "a/b", "backslash to slash");
+	assert(sanitizeRelative("../etc/passwd") === null, "dotdot rejected");
+	assert(sanitizeRelative("/abs") === null, "absolute rejected");
+	assert(sanitizeRelative("a/../b") === null, "embedded dotdot rejected");
+	assert(sanitizeRelative("a/" + "x".repeat(300)) === null, "overlong segment rejected");
+	assert(sanitizeRelative("") === null, "empty name rejected");
+}
+
+{
+	assert(isLoopbackHostname("127.0.0.1"), "127.0.0.1");
+	assert(isLoopbackHostname("127.1.2.3"), "127/8");
+	assert(isLoopbackHostname("localhost"), "localhost");
+	assert(isLoopbackHostname("[::1]"), "[::1]");
+	assert(!isLoopbackHostname("8.8.8.8"), "public IP not loopback");
+	assert(!isLoopbackHostname("dev.thehumanloop.eu"), "hostname not loopback");
+}
+
+{
+	assert(isTrustedRequest({ host: "127.0.0.1:3080" }, []), "loopback without origin");
+	assert(isTrustedRequest({ host: "127.0.0.1:3080", origin: "http://127.0.0.1:3080" }, []), "same-origin loopback");
+	assert(!isTrustedRequest({ host: "127.0.0.1:3080", origin: "http://evil.example" }, []), "cross-origin rejected");
+	assert(!isTrustedRequest({ host: "127.0.0.1:3080", "sec-fetch-site": "cross-site" }, []), "cross-site fetch rejected");
+	assert(!isTrustedRequest({ host: "dev.thehumanloop.eu" }, []), "untrusted host rejected");
+	assert(isTrustedRequest({ host: "dev.thehumanloop.eu" }, ["dev.thehumanloop.eu"]), "trusted host accepted");
+	assert(
+		authorityMatches("dev.thehumanloop.eu", new URL("http://dev.thehumanloop.eu:443")),
+		"port-less trusted host matches any port",
+	);
+}
+
+{
+	assert(safeFilename('a"b\nc') === "a_b_c", "header-safe filename");
+	assert(isUploadTempName(".dsh-upload-deadbeefcafebabe"), "temp name detected");
+	assert(!isUploadTempName(".hidden"), "regular hidden not temp");
+	assert(relativeFrom("/ws", "/ws") === "", "root relative is empty");
+	assert(relativeFrom("/ws", "/ws/a/b") === "a/b", "nested relative");
+}
+
+{
+	const root = mkdtempSync(join(tmpdir(), "dsh-fe-pol-"));
+	writeFileSync(join(root, "ok.txt"), "hi");
+	mkdirSync(join(root, "sub"));
+	writeFileSync(join(root, "sub", "nested.txt"), "n");
+	symlinkSync("/etc/passwd", join(root, "escape"));
+	const rootReal = await realpath(root);
+
+	const file = await resolveExisting(root, "ok.txt", "file");
+	assert(!("error" in file) && file.path.endsWith("ok.txt"), "resolve file inside root");
+
+	const dir = await resolveExisting(root, "sub", "dir");
+	assert(!("error" in dir), "resolve dir inside root");
+
+	const esc = await resolveExisting(root, "../" + "etc/passwd", "file");
+	assert("error" in esc && /escape/.test(esc.error), "dotdot escape refused");
+
+	const abs = await resolveExisting(root, "/etc/passwd", "file");
+	assert("error" in abs, "absolute outside refused");
+
+	const link = await resolveExisting(root, "escape", "file");
+	assert("error" in link, "symlink escape refused");
+
+	const missing = await resolveExisting(root, "nope.txt", "file");
+	assert("error" in missing && missing.status === 404, "missing is 404");
+
+	const notFile = await resolveExisting(root, "sub", "file");
+	assert("error" in notFile, "dir is not a file");
+
+	const upload = await resolveNewFile(root, "", "fresh.txt");
+	assert(!("error" in upload) && upload.path === join(rootReal, "fresh.txt"), "new file in root");
+
+	const nested = await resolveNewFile(root, "", "brand/new.txt");
+	assert(!("error" in nested), "nested upload creates parents");
+
+	const badName = await resolveNewFile(root, "", "../x");
+	assert("error" in badName, "upload name with dotdot refused");
+
+	const move = await resolveRename(root, "ok.txt", "renamed.txt");
+	assert(!("error" in move) && move.toPath.endsWith("renamed.txt"), "rename resolves inside root");
+
+	const moveEscape = await resolveRename(root, "ok.txt", "../outside.txt");
+	assert("error" in moveEscape, "rename escape refused");
+
+	const moveIntoSelf = await resolveRename(root, "sub", "sub/inner.txt");
+	assert("error" in moveIntoSelf, "rename dir into itself refused");
+
+	const moveMissingParent = await resolveRename(root, "ok.txt", "no-such-dir/file.txt");
+	assert("error" in moveMissingParent, "rename missing parent refused");
+
+	const zipped = await collectZipEntries(root, { prefix: "proj" });
+	const zipNames = zipped.entries.map((e) => e.name);
+	assert(zipNames.includes("proj/ok.txt"), "zip walk includes file");
+	assert(zipNames.includes("proj/sub/nested.txt"), "zip walk includes nested file");
+	assert(!zipNames.some((n) => n.includes("escape") || n.includes("passwd")), "zip walk skips symlink");
+	assert(zipArchiveName("src/out", root) === "out.zip", "zip archive name from path");
+}
+
+if (failures > 0) {
+	console.error(`\n${failures} failure(s)`);
+	process.exit(1);
+}
+console.log("\npolicy tests passed");
