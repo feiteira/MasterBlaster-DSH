@@ -1,0 +1,29 @@
+{
+  "name": "dsh-session-icon",
+  "version": "0.1.0",
+  "description": "Optional leading icons on DeepSeek Harness session rows, with aligned titles",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "platform": "web",
+      "inject": ["slots", "sessions"]
+    }
+  },
+  "files": ["lib", "README.md"],
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-storage-domain": "^0.1.2-rc.1",
+    "react": "^19.0.0",
+    "zod": "^4.0.0"
+  },
+  "license": "MIT"
+}
