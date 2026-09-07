@@ -1,0 +1,36 @@
+{
+  "name": "dsh-terminal-web",
+  "version": "0.1.0",
+  "description": "Interactive command-line terminal for the DeepSeek Harness Web GUI, rooted in the open workspace",
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "platform": "web",
+      "inject": [
+        "slots"
+      ]
+    }
+  },
+  "files": [
+    "lib/index.js",
+    "lib/client.js",
+    "lib/types/**/*.d.ts"
+  ],
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-host-webserver": "^0.1.0-rc.7",
+    "@deepseek-ai/schemastery": "^3.18.1",
+    "ws": "^8.21.0"
+  },
+  "license": "MIT"
+}

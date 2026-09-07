@@ -1,0 +1,20 @@
+import WebSocket from "ws";
+const url = `ws://127.0.0.1:3080/terminal.ws?cwd=${encodeURIComponent("/var/lib/harness/Test")}&cols=120&rows=30`;
+const ws = new WebSocket(url);
+const events = [];
+ws.on("message", (raw) => {
+  const f = JSON.parse(String(raw));
+  if (f.type === "output") events.push(f.data);
+  if (f.type === "exit") events.push(`[exit ${f.code}]`);
+});
+await new Promise((res, rej) => { ws.on("open", res); ws.on("error", rej); });
+await new Promise((r) => setTimeout(r, 800));
+ws.send(JSON.stringify({ type: "input", data: "pwd; echo LIVE_WS_OK; ls -la | head -3\r" }));
+await new Promise((r) => setTimeout(r, 1200));
+const out = events.join("");
+console.log("HAS_CWD:", out.includes("/var/lib/harness/Test"));
+console.log("HAS_MARKER:", out.includes("LIVE_WS_OK"));
+console.log("--- sample output ---");
+console.log(out.slice(0, 600));
+ws.close();
+process.exit(0);
