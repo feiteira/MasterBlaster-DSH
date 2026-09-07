@@ -1,0 +1,21 @@
+{
+  "name": "dsh-remote-settings",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Serve host-backed settings JS only for the authenticated reverse-proxy origin",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/index.js",
+    "lib/patch.js",
+    "lib/patch-files.js",
+    "README.md"
+  ],
+  "license": "MIT"
+}
