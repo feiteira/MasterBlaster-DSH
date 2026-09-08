@@ -3,7 +3,7 @@
 **Master Blaster** is the plugin pack that powers the DeepSeek Harness Web
 GUI in this deployment: a monorepo of client + host plugins that extend the
 stock harness with browser-style workspace tabs, a file manager, a real
-terminal, search, and quality-of-life tweaks.
+terminal, and quality-of-life tweaks.
 
 ## Plugins
 
@@ -12,7 +12,6 @@ terminal, search, and quality-of-life tweaks.
 | [`dsh-workspace-tabs`](dsh-workspace-tabs) | Browser-style tabs across the top for every workspace, a `+` button that opens/creates a new project folder, and a scoped native sidebar that follows the active tab. |
 | [`dsh-file-explorer`](dsh-file-explorer) | Right-docked file manager: browse (Up works even above the project root), upload via drag-and-drop, preview, download, zip, rename, delete, new file/folder. |
 | [`dsh-terminal-web`](dsh-terminal-web) | Bottom-docked real PTY terminal rooted at the session workspace. |
-| [`dsh-fart-search`](dsh-fart-search) | FART (file-and-symbol) search across the workspace. |
 | [`dsh-session-icon`](dsh-session-icon) | Optional leading icons on sidebar session rows. |
 | [`dsh-executor-model`](dsh-executor-model) | Optional per-chat executor model (Main/Thinker delegates bounded tasks to it). |
 | [`dsh-remote-settings`](dsh-remote-settings) | Host-backed Settings → Models for the basic-auth reverse proxy. |
