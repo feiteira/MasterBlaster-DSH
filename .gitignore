@@ -1,0 +1,19 @@
+# Local deploy/environment state — never publish
+.dsh/
+.upgrade/
+
+# Verification artifacts (screenshots, downloaded browser libs, probe scripts)
+.verification/browser-libs/
+.verification/node_modules/
+.verification/*.png
+.verification/*.deb
+.verification/*.json
+.verification/*.mjs
+.verification/*.sh
+.verification/cordis.patch.yml.bak
+.verification/live-after-restart.txt
+.verification/package-lock.json
+
+# Dependencies
+node_modules/
+**/node_modules/
