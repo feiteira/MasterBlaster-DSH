@@ -25,6 +25,7 @@ import {
 	isTrustedRequest,
 	isUploadTempName,
 	normalizeInput,
+	pathLabel,
 	relativeFrom,
 	resolveDeletable,
 	resolveExisting,
@@ -166,12 +167,14 @@ async function handleList(ctx, req, res, url, config) {
 		if (d !== 0) return d;
 		return a.name.localeCompare(b.name);
 	});
-	const rel = relativeFrom(resolved.root, resolved.path) ?? "";
-	const parent = rel === "" ? null : rel.includes("/") ? rel.slice(0, rel.lastIndexOf("/")) : "";
+	const root = resolved.root ?? null;
+	const rel = root === null ? null : relativeFrom(root, resolved.path);
+	const parent = rel === null || rel === "" ? null : rel.includes("/") ? rel.slice(0, rel.lastIndexOf("/")) : "";
 	const payload = {
-		root: resolved.root,
+		root,
 		path: rel,
 		parent,
+		abs: resolved.path,
 		truncated,
 		entries,
 	};
@@ -376,7 +379,7 @@ async function handleUpload(ctx, req, res, url, config) {
 		sendError(res, 400, "could not write file");
 		return;
 	}
-	const rel = relativeFrom(target.root, target.path) ?? basename(target.path);
+	const rel = pathLabel(target.root, target.path);
 	sendJson(res, exists ? 200 : 201, { path: rel, size });
 }
 
@@ -407,7 +410,8 @@ async function handleMkdir(ctx, req, res, url) {
 		sendError(res, 400, "could not create directory");
 		return;
 	}
-	// Refuse if mkdir followed a symlink out of the workspace.
+	// Verify the target really exists at the canonical location; a symlink
+	// raced between mkdir and realpath is rolled back.
 	const verified = await resolveExisting(session.cwd, requested, "dir");
 	if ("error" in verified) {
 		try {
@@ -415,10 +419,10 @@ async function handleMkdir(ctx, req, res, url) {
 		} catch {
 			/* best-effort */
 		}
-		sendError(res, 400, "path escapes the project directory");
+		sendError(res, 400, verified.error);
 		return;
 	}
-	sendJson(res, 201, { path: relativeFrom(verified.root, verified.path) ?? requested });
+	sendJson(res, 201, { path: pathLabel(verified.root, verified.path) });
 }
 
 async function handleDelete(ctx, req, res, url) {
@@ -448,7 +452,7 @@ async function handleDelete(ctx, req, res, url) {
 		sendError(res, 400, "could not delete path");
 		return;
 	}
-	sendJson(res, 200, { path: relativeFrom(resolved.root, resolved.path) ?? requested, deleted: true });
+	sendJson(res, 200, { path: pathLabel(resolved.root, resolved.path), deleted: true });
 }
 
 async function handleRename(ctx, req, res, url) {
@@ -505,7 +509,7 @@ async function handleRename(ctx, req, res, url) {
 		sendError(res, 400, "could not rename path");
 		return;
 	}
-	sendJson(res, 200, { from: relativeFrom(resolved.root, resolved.fromPath) ?? from, path: relativeFrom(resolved.root, resolved.toPath) ?? to, renamed: true });
+	sendJson(res, 200, { from: pathLabel(resolved.root, resolved.fromPath), path: pathLabel(resolved.root, resolved.toPath), renamed: true });
 }
 
 async function handle(ctx, req, res, config) {

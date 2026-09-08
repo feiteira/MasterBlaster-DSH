@@ -1,8 +1,9 @@
 import { createServer } from "node:http";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import { realpath } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { apply } from "../lib/index.js";
 
 let route = null;
@@ -39,6 +40,12 @@ mkdirSync(join(workdir, "sub"));
 writeFileSync(join(workdir, "hello.txt"), "hello-world");
 writeFileSync(join(workdir, "sub", "nested.txt"), "nested");
 symlinkSync("/etc/passwd", join(workdir, "escape"));
+const workdirReal = await realpath(workdir);
+// A directory OUTSIDE the session project, for file-manager-style browsing.
+const sibling = mkdtempSync(join(tmpdir(), "dsh-fe-host-out-"));
+const siblingReal = await realpath(sibling);
+writeFileSync(join(sibling, "sib.txt"), "sibling-content");
+mkdirSync(join(sibling, "subdir"));
 
 apply(fakeCtx, { trustedHosts: [], maxUploadBytes: 1024, maxListEntries: 100 });
 if (route === null) throw new Error("route was not registered");
@@ -117,8 +124,54 @@ async function call(method, path, { body, headers } = {}) {
 }
 
 {
-	const res = await call("GET", "/api/file.explorer/download?sessionId=s1&path=/etc/passwd");
-	assert(res.status === 400, "absolute download escape rejected");
+	const res = await call("GET", `/api/file.explorer/download?sessionId=s1&path=${encodeURIComponent(join(sibling, "sib.txt"))}`);
+	assert(res.status === 200 && res.text === "sibling-content", "absolute download outside the project is allowed");
+}
+
+{
+	const res = await call("GET", `/api/file.explorer/list?sessionId=s1&path=${encodeURIComponent(sibling)}`);
+	assert(res.status === 200, "list absolute dir outside root");
+	assert(res.json?.entries.some((e) => e.name === "sib.txt"), "outside listing has sibling content");
+	assert(res.json?.abs === siblingReal, "list reports canonical abs directory");
+}
+
+{
+	const res = await call("POST", `/api/file.explorer/upload?sessionId=s1&dir=${encodeURIComponent(sibling)}&name=put.txt`, {
+		body: "put-outside",
+	});
+	assert(res.status === 201, "upload into absolute outside dir");
+	assert(readFileSync(join(sibling, "put.txt"), "utf8") === "put-outside", "outside upload landed on disk");
+}
+
+{
+	const res = await call("POST", `/api/file.explorer/mkdir?sessionId=s1&path=${encodeURIComponent(join(sibling, "made"))}`);
+	assert(res.status === 201, "mkdir absolute outside dir");
+	assert(existsSync(join(sibling, "made")), "outside dir created");
+}
+
+{
+	writeFileSync(join(sibling, "del.txt"), "bye");
+	const res = await call("POST", `/api/file.explorer/delete?sessionId=s1&path=${encodeURIComponent(join(sibling, "del.txt"))}`);
+	assert(res.status === 200 && res.json?.deleted === true, "delete absolute outside file");
+	assert(!existsSync(join(sibling, "del.txt")), "outside file removed");
+}
+
+{
+	const res = await call("POST", `/api/file.explorer/delete?sessionId=s1&path=${encodeURIComponent(workdirReal)}`);
+	assert(res.status === 400, "absolute delete of the session project dir refused");
+	const ancestor = await call("POST", `/api/file.explorer/delete?sessionId=s1&path=${encodeURIComponent(dirname(workdirReal))}`);
+	assert(ancestor.status === 400, "absolute delete of an ancestor dir refused");
+	const fsroot = await call("POST", "/api/file.explorer/delete?sessionId=s1&path=%2F");
+	assert(fsroot.status === 400, "absolute delete of filesystem root refused");
+}
+
+{
+	writeFileSync(join(sibling, "r.txt"), "rename-out");
+	const res = await call("POST", `/api/file.explorer/rename?sessionId=s1&from=${encodeURIComponent(join(sibling, "r.txt"))}&to=${encodeURIComponent(join(sibling, "r2.txt"))}`);
+	assert(res.status === 200 && res.json?.renamed === true, "rename absolute outside project");
+	assert(readFileSync(join(sibling, "r2.txt"), "utf8") === "rename-out", "outside rename landed");
+	const anc = await call("POST", `/api/file.explorer/rename?sessionId=s1&from=${encodeURIComponent(dirname(workdirReal))}&to=${encodeURIComponent(join(sibling, "harness"))}`);
+	assert(anc.status === 400, "moving an ancestor of the open project refused");
 }
 
 {

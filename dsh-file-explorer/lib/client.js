@@ -4,7 +4,9 @@
  * words are required (react); everything else is self-contained.
  *
  * Right-docked explorer in shell.overlay + a Files toggle in
- * sidebar.footer.action. Talks to /api/file.explorer/* on the host.
+ * sidebar.footer.action. Talks to /api/file.explorer/* on the host. The
+ * current directory is tracked as a canonical absolute path, so "↑ Up" /
+ * Backspace keep working above the project root (file-manager style).
  */
 window.__ModuleLoader__.load({
 	id: "dsh-file-explorer",
@@ -92,19 +94,27 @@ window.__ModuleLoader__.load({
 			return panelState;
 		}
 
+		/** Join one entry name onto a directory (absolute or `""`). */
 		function joinRel(dir, name) {
+			if (!name) return dir || "";
 			if (!dir) return name;
-			if (!name) return dir;
-			return `${dir}/${name}`;
+			const sep = dir.endsWith("/") ? "" : "/";
+			return dir + sep + name;
 		}
+		/** Parent of a canonical absolute directory; `/` is the top. */
 		function parentRel(dir) {
 			if (!dir) return "";
-			const i = dir.lastIndexOf("/");
-			return i === -1 ? "" : dir.slice(0, i);
+			const trimmed = String(dir).replace(/[\\/]+$/, "");
+			if (trimmed === "") return "/";
+			if (trimmed === "/") return "/";
+			const i = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"));
+			if (i <= 0) return "/";
+			return trimmed.slice(0, i);
 		}
+		/** Path segments of a canonical absolute directory (root has none). */
 		function splitRel(dir) {
 			if (!dir) return [];
-			return dir.split("/").filter(Boolean);
+			return String(dir).split(/[\\/]+/).filter(Boolean);
 		}
 		function formatBytes(n) {
 			const value = Number(n);
@@ -374,10 +384,10 @@ window.__ModuleLoader__.load({
 
 		function Breadcrumb({ path, onGo }) {
 			const parts = splitRel(path);
-			const crumbs = [{ label: "workspace", value: "" }];
+			const crumbs = [{ label: path ? "/" : "workspace", value: path ? "/" : "" }];
 			let acc = "";
 			for (const part of parts) {
-				acc = joinRel(acc, part);
+				acc = acc ? `${acc}/${part}` : `/${part}`;
 				crumbs.push({ label: part, value: acc });
 			}
 			return React.createElement("div", { className: "fe-crumb" },
@@ -522,6 +532,7 @@ window.__ModuleLoader__.load({
 				setError("");
 				try {
 					const data = await listDir(sessionId, rel);
+					if (data.abs && data.abs !== rel) setRel(data.abs);
 					setListing(data);
 					setStatus(`${data.entries.length} item${data.entries.length === 1 ? "" : "s"}`);
 					if (data.truncated) setStatus("listing truncated");
@@ -791,7 +802,7 @@ window.__ModuleLoader__.load({
 			}, [confirm, sessionId, rel, refresh]);
 
 			const onBodyKeyDown = React.useCallback((event) => {
-				if (event.key === "Backspace" && rel) {
+				if (event.key === "Backspace" && rel && parentRel(rel) !== rel) {
 					const target = event.target;
 					if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
 					event.preventDefault();
@@ -816,7 +827,7 @@ window.__ModuleLoader__.load({
 			},
 				React.createElement("div", { className: "fe-head" },
 					React.createElement("span", { className: "fe-title" }, "Files"),
-					React.createElement("span", { className: "fe-cwd", title: cwd ?? "" }, cwd ?? "no session"),
+					React.createElement("span", { className: "fe-cwd", title: rel || cwd || "" }, rel || cwd || "no session"),
 					React.createElement("button", { type: "button", className: "fe-btn fe-icon", title: panel.wide ? "Narrow" : "Widen", onClick: () => setPanel({ wide: !panel.wide }) }, panel.wide ? "◂" : "▸"),
 					React.createElement("button", { type: "button", className: "fe-btn fe-icon", title: "Close", onClick: () => setPanel({ visible: false }) }, "×")
 				),
@@ -851,7 +862,7 @@ window.__ModuleLoader__.load({
 					}, showHidden ? "👁‍🗨" : "👁")
 				),
 				React.createElement("div", { className: "fe-toolbar" },
-					React.createElement("button", { type: "button", className: "fe-btn", disabled: !rel, onClick: () => setRel(parentRel(rel)) }, "↑ Up"),
+					React.createElement("button", { type: "button", className: "fe-btn", disabled: !rel || rel === "/", title: rel === "/" ? "Already at the filesystem root" : "Go to the parent folder", onClick: () => setRel(parentRel(rel)) }, "↑ Up"),
 					React.createElement("button", { type: "button", className: "fe-btn", disabled: !sessionId || busy, onClick: refresh }, "Refresh"),
 					React.createElement("button", {
 						type: "button",
@@ -1002,7 +1013,7 @@ window.__ModuleLoader__.load({
 						)
 					) : null
 				),
-				React.createElement("div", { className: "fe-hint" }, "Drag files or folders onto this panel to upload. Click 👁 to preview, double-click to download. Backspace goes up, Enter opens. Zip downloads a folder as an archive.")
+				React.createElement("div", { className: "fe-hint" }, "Drag files or folders onto this panel to upload. Click 👁 to preview, double-click to download. ↑ Up / Backspace go to the parent folder — you may move above the project root. Zip downloads a folder as an archive.")
 			);
 		}
 

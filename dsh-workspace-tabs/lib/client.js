@@ -15,7 +15,9 @@
  * Selecting a tab opens that workspace's most-recent session (reusing its
  * blank placeholder, or creating a session when it has none), so the main
  * view follows the tabs. The selection also follows the current session, so
- * navigating through the sidebar keeps the tabs in sync.
+ * navigating through the sidebar keeps the tabs in sync. A leading "+" opens
+ * an "Add workspace" dialog (home-directory browse + new folder) that adopts
+ * the chosen directory as a new project tab.
  */
 window.__ModuleLoader__.load({
 	id: "dsh-workspace-tabs",
@@ -49,6 +51,34 @@ window.__ModuleLoader__.load({
 			".wt-tool{background:transparent;border:1px solid transparent;border-radius:7px;color:var(--dsw-alias-label-secondary,#aaa);cursor:pointer;font:inherit;font-size:12px;padding:4px 9px;white-space:nowrap}",
 			".wt-tool:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.18));color:var(--dsw-alias-label-primary,#eee)}",
 			".wt-empty{color:var(--dsw-alias-label-tertiary,#888);font-size:12px;align-self:center;padding:0 6px 6px}",
+			".wt-add{flex:none;display:flex;align-items:center;justify-content:center;width:26px;height:26px;margin:0 2px 0 0;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--dsw-alias-label-secondary,#aaa);cursor:pointer;font:inherit;font-size:18px;line-height:1;padding:0}",
+			".wt-add:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.18));color:var(--dsw-alias-label-primary,#eee)}",
+			".wt-add:focus-visible{outline:2px solid var(--dsw-alias-label-primary-bluish,#4da3ff);outline-offset:-1px}",
+			".wt-modal{position:fixed;inset:0;z-index:2100;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--dsw-alias-bg-mask-modal,#000) 55%,transparent);pointer-events:auto;font-family:var(--dsw-font-family,system-ui,-apple-system,sans-serif)}",
+			".wt-dialog{width:min(680px,92vw);max-height:min(580px,86vh);display:flex;flex-direction:column;background:var(--dsw-alias-bg-layer-2,var(--dsw-alias-bg-base,#171717));border:1px solid var(--dsw-alias-border-l3,rgba(127,127,127,.4));border-radius:14px;box-shadow:0 18px 60px rgba(0,0,0,.5);color:var(--dsw-alias-label-primary,#eee);font-size:13px;line-height:1.4;overflow:hidden}",
+			".wt-dlg-title{flex:1;min-width:0;padding:14px 16px 10px;font-size:15px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid var(--dsw-alias-border-l2,rgba(127,127,127,.3))}",
+			".wt-dlg-crumb{display:flex;align-items:center;gap:2px;padding:4px 10px;flex-wrap:wrap;border-bottom:1px solid var(--dsw-alias-border-l2,rgba(127,127,127,.3));font-size:12px;color:var(--dsw-alias-label-tertiary,#888)}",
+			".wt-dlg-crumb button{background:transparent;border:none;color:var(--dsw-alias-label-secondary,#aaa);cursor:pointer;font:inherit;padding:2px 5px;border-radius:4px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
+			".wt-dlg-crumb button:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.14));color:var(--dsw-alias-label-primary,#eee)}",
+			".wt-dlg-crumb button.wt-here{color:var(--dsw-alias-label-primary,#eee);font-weight:600}",
+			".wt-dlg-body{flex:1;min-height:180px;overflow:auto;padding:6px}",
+			".wt-dlg-row{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:transparent;border:none;color:var(--dsw-alias-label-primary,#eee);cursor:pointer;font:inherit;font-size:13px;padding:5px 10px;border-radius:8px}",
+			".wt-dlg-row:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.14))}",
+			".wt-dlg-row.wt-dlg-sel{background:var(--dsw-alias-interactive-bg-active,rgba(127,127,127,.3))}",
+			".wt-dlg-row-icon{flex:none;font-size:14px;line-height:1}",
+			".wt-dlg-row-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
+			".wt-dlg-row-go{flex:none;color:var(--dsw-alias-label-tertiary,#888);font-size:13px}",
+			".wt-dlg-empty{color:var(--dsw-alias-label-tertiary,#888);padding:26px 12px;text-align:center;font-size:12px}",
+			".wt-dlg-foot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 16px;border-top:1px solid var(--dsw-alias-border-l2,rgba(127,127,127,.3))}",
+			".wt-dlg-err{flex:1;color:var(--dsw-alias-state-error-primary,#f47067);font-size:12px;min-width:140px}",
+			".wt-dlg-create{display:flex;align-items:center;gap:8px;flex:1;min-width:200px}",
+			".wt-dlg-create input{flex:1;min-width:120px;background:var(--dsw-alias-bg-base,#101010);border:1px solid var(--dsw-alias-border-l2,rgba(127,127,127,.35));border-radius:7px;color:var(--dsw-alias-label-primary,#eee);font:inherit;font-size:12px;padding:5px 8px}",
+			".wt-dlg-btn{background:transparent;border:1px solid var(--dsw-alias-border-l2,rgba(127,127,127,.35));color:var(--dsw-alias-label-primary,#eee);border-radius:7px;cursor:pointer;font:inherit;font-size:12px;padding:5px 12px;white-space:nowrap}",
+			".wt-dlg-btn:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.18))}",
+			".wt-dlg-btn:disabled{opacity:.5;cursor:not-allowed}",
+			".wt-dlg-btn.wt-primary{border-color:var(--dsw-alias-label-primary-bluish,#4da3ff);color:var(--dsw-alias-label-primary-bluish,#4da3ff)}",
+			".wt-dlg-toggle{background:transparent;border:none;color:var(--dsw-alias-label-secondary,#aaa);cursor:pointer;font:inherit;font-size:12px;padding:5px 8px;border-radius:6px}",
+			".wt-dlg-toggle:hover{color:var(--dsw-alias-label-primary,#eee);background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.14))}",
 		].join("\n");
 
 		if (typeof document !== "undefined") {
@@ -520,11 +550,216 @@ window.__ModuleLoader__.load({
 			return ScopedWorkspaceBrowser;
 		}
 
+		/** Rows for the add-dialog: dot-directories hidden unless requested. */
+		function addRowsFiltered(rows, showHidden) {
+			return (rows ?? []).filter((row) => showHidden === true || row.hidden !== true);
+		}
+
+		/** Folder to adopt when opening: the selected row, else the listed directory. */
+		function adoptTarget(selectedPath, directory) {
+			return selectedPath || directory || null;
+		}
+
+		/** First workspace bound to `directory` (exact path match), or null. */
+		function findWorkspaceByPath(items, directory) {
+			if (!directory) return null;
+			for (const workspace of items ?? []) {
+				if (workspace.path === directory) return workspace;
+			}
+			return null;
+		}
+
+		/**
+		 * The tab-bar "+": a self-contained "Add workspace" dialog that browses
+		 * host directories over the same browse seam the native composer picker
+		 * uses (listDirectory / createDirectory), can create a new folder, and
+		 * adopts the chosen directory as a workspace via `adoptAndGo`.
+		 */
+		function AddWorkspaceDialog({ picker, adoptAndGo, onCancel }) {
+			const [directory, setDirectory] = React.useState(null);
+			const [crumbs, setCrumbs] = React.useState([]);
+			const [rows, setRows] = React.useState([]);
+			const [selected, setSelected] = React.useState(null);
+			const [showHidden, setShowHidden] = React.useState(false);
+			const [error, setError] = React.useState("");
+			const [busy, setBusy] = React.useState(false);
+			const [creating, setCreating] = React.useState(false);
+			const [folderDraft, setFolderDraft] = React.useState("");
+			const seqRef = React.useRef(0);
+			const abortRef = React.useRef(null);
+
+			React.useEffect(() => () => {
+				if (abortRef.current) abortRef.current.abort();
+			}, []);
+
+			const list = React.useCallback((path) => {
+				if (!picker) {
+					setError("The workspace folder browser is not available on this page.");
+					setBusy(false);
+					return;
+				}
+				const seq = ++seqRef.current;
+				if (abortRef.current) abortRef.current.abort();
+				const controller = new AbortController();
+				abortRef.current = controller;
+				setBusy(true);
+				setError("");
+				setSelected(null);
+				picker.list(path, controller.signal).then((listing) => {
+					if (seq !== seqRef.current) return;
+					setDirectory(listing?.path ?? null);
+					setCrumbs(listing?.crumbs ?? []);
+					setRows(listing?.entries ?? []);
+					setBusy(false);
+				}, (reason) => {
+					if (seq !== seqRef.current) return;
+					setBusy(false);
+					setError(reason instanceof Error ? reason.message : String(reason));
+				});
+			}, [picker]);
+
+			React.useEffect(() => {
+				list(undefined); // the browse seam defaults to the home directory
+			}, [list]);
+
+			const navigate = React.useCallback((path) => {
+				if (path && path !== directory) list(path);
+			}, [directory, list]);
+
+			const submitFolder = React.useCallback(async () => {
+				const name = folderDraft.trim();
+				if (!picker || !directory || name === "") return;
+				setBusy(true);
+				setError("");
+				try {
+					const created = await picker.create(directory, name);
+					setCreating(false);
+					setFolderDraft("");
+					await list(directory);
+					setSelected(typeof created === "string" ? created : `${directory.replace(/[\\/]+$/, "")}/${name}`);
+				} catch (reason) {
+					setError(reason instanceof Error ? reason.message : String(reason));
+					setBusy(false);
+				}
+			}, [picker, directory, folderDraft, list]);
+
+			const openTarget = React.useCallback(async () => {
+				const target = adoptTarget(selected, directory);
+				if (!target) return;
+				setBusy(true);
+				setError("");
+				try {
+					await adoptAndGo(target);
+				} catch (reason) {
+					setError(reason instanceof Error ? reason.message : String(reason));
+					setBusy(false);
+				}
+			}, [selected, directory, adoptAndGo]);
+
+			const visible = addRowsFiltered(rows, showHidden);
+			return React.createElement("div", {
+				className: "wt-modal",
+				onMouseDown: (event) => {
+					if (event.target === event.currentTarget && !creating) onCancel();
+				},
+			},
+				React.createElement("div", {
+					className: "wt-dialog",
+					role: "dialog",
+					"aria-modal": "true",
+					"aria-label": "Add workspace — choose or create a project folder",
+					onKeyDown: (event) => {
+						if (event.key !== "Escape") return;
+						event.stopPropagation();
+						if (creating) {
+							setCreating(false);
+							setFolderDraft("");
+						} else {
+							onCancel();
+						}
+					},
+				},
+					React.createElement("div", { className: "wt-dlg-title" }, "Add workspace — choose or create a project folder"),
+					React.createElement("div", { className: "wt-dlg-crumb" },
+						(crumbs ?? []).map((crumb, index) => React.createElement(React.Fragment, { key: `${crumb.path}:${index}` },
+							index > 0 ? React.createElement("span", { "aria-hidden": true }, " / ") : null,
+							React.createElement("button", {
+								type: "button",
+								className: crumb.path === directory ? "wt-here" : undefined,
+								title: crumb.path,
+								onClick: () => navigate(crumb.path),
+							}, crumb.name),
+						)),
+						React.createElement("button", {
+							type: "button",
+							className: "wt-dlg-toggle",
+							title: showHidden ? "Hide dot folders" : "Show dot folders",
+							onClick: () => setShowHidden(!showHidden),
+						}, showHidden ? "Hide hidden" : "Show hidden"),
+					),
+					React.createElement("div", { className: "wt-dlg-body", role: "listbox", "aria-label": "Project folders", tabIndex: 0 },
+						busy && visible.length === 0 ? React.createElement("div", { className: "wt-dlg-empty" }, "Loading folders…")
+							: visible.length === 0 ? React.createElement("div", { className: "wt-dlg-empty" }, error || "No folders here.")
+								: visible.map((row) => React.createElement("button", {
+									key: row.path,
+									type: "button",
+									role: "option",
+									"aria-selected": selected === row.path,
+									className: "wt-dlg-row" + (selected === row.path ? " wt-dlg-sel" : ""),
+									title: row.path,
+									onClick: () => setSelected(row.path),
+									onDoubleClick: () => navigate(row.path),
+								},
+									React.createElement("span", { className: "wt-dlg-row-icon", "aria-hidden": true }, "📁"),
+									React.createElement("span", { className: "wt-dlg-row-name" }, row.name),
+									React.createElement("button", {
+										type: "button",
+										className: "wt-dlg-row-go",
+										title: "Open this folder",
+										onClick: (event) => {
+											event.stopPropagation();
+											navigate(row.path);
+										},
+									}, "›"),
+								)),
+					),
+					React.createElement("div", { className: "wt-dlg-foot" },
+						error ? React.createElement("span", { className: "wt-dlg-err", role: "alert" }, error) : React.createElement("span", { className: "wt-dlg-err" }),
+						creating ? React.createElement("div", { className: "wt-dlg-create" },
+							React.createElement("input", {
+								type: "text",
+								value: folderDraft,
+								"aria-label": "New folder name",
+								placeholder: "Untitled folder",
+								autoFocus: true,
+								disabled: busy,
+								onChange: (event) => setFolderDraft(event.target.value),
+								onKeyDown: (event) => {
+									if (event.key === "Enter") {
+										event.preventDefault();
+										void submitFolder();
+									}
+								},
+							}),
+							React.createElement("button", { type: "button", className: "wt-dlg-btn wt-primary", disabled: busy || folderDraft.trim() === "", onClick: () => void submitFolder() }, "Create"),
+							React.createElement("button", { type: "button", className: "wt-dlg-btn", disabled: busy, onClick: () => { setCreating(false); setFolderDraft(""); } }, "Cancel"),
+						) : React.createElement(React.Fragment, null,
+							React.createElement("button", { type: "button", className: "wt-dlg-btn", disabled: busy, onClick: () => { setCreating(true); setFolderDraft(""); } }, "New folder"),
+							React.createElement("button", { type: "button", className: "wt-dlg-btn", disabled: busy, onClick: onCancel }, "Cancel"),
+							React.createElement("button", { type: "button", className: "wt-dlg-btn wt-primary", disabled: busy || !directory, onClick: () => void openTarget() }, "Open"),
+						),
+					),
+				),
+			);
+		}
+
 		function WorkspaceTabs({ shared }) {
 			useListRevision(shared.services, shared.selection);
 			const [status, setStatus] = React.useState(null);
 			const [busy, setBusy] = React.useState(false);
 			const [, setTick] = React.useState(0);
+			const [addOpen, setAddOpen] = React.useState(false);
+			const [addPicker, setAddPicker] = React.useState(null);
 			const inflight = React.useRef(new Map());
 
 			React.useEffect(() => {
@@ -609,11 +844,49 @@ window.__ModuleLoader__.load({
 				}
 			}, [shared]);
 
-			return React.createElement("div", { className: "wt-root", "data-workspace-tabs": "1" },
+			const adoptAndGo = React.useCallback(async (path) => {
+				const workspacesSvc = shared.services.workspaces;
+				if (!workspacesSvc) throw new Error("Workspace services are unavailable.");
+				const result = await workspacesSvc.create({ path });
+				if (!result || result.ok !== true) {
+					throw new Error(result?.error?.message ?? "Could not add the workspace.");
+				}
+				const workspace = result.value?.workspace;
+				if (!workspace || !workspace.workspaceId) throw new Error("Could not add the workspace.");
+				shared.selection.set(workspace.workspaceId);
+				const fresh = shared.filteredView.compute();
+				const target = pickSessionTarget(
+					{ kind: "workspace", workspaceId: workspace.workspaceId },
+					fresh.items,
+					fresh.seSnap,
+					fresh.archived,
+				);
+				await performTarget(target);
+				setAddOpen(false);
+			}, [shared, performTarget]);
+
+			const openAddDialog = React.useCallback(() => {
+				setAddPicker(typeof shared.getPicker === "function" ? shared.getPicker() : null);
+				setAddOpen(true);
+			}, [shared]);
+
+			return React.createElement("div", {
+				className: "wt-root",
+				"data-workspace-tabs": "1",
+				style: addOpen ? { zIndex: 2600 } : undefined,
+			},
 				React.createElement("div", { className: "wt-tabs", role: "tablist", "aria-label": "Workspaces" },
 					loading
 						? React.createElement("div", { className: "wt-empty" }, "Loading workspaces…")
 						: React.createElement("div", { className: "wt-tablist" },
+							React.createElement("button", {
+								key: "__add",
+								type: "button",
+								className: "wt-add",
+								"aria-label": "Add workspace",
+								title: "Add a new project — choose or create a folder",
+								onClick: openAddDialog,
+							}, "+"),
 							tabs.map((tab) => React.createElement("button", {
 								key: tab.workspaceId,
 								type: "button",
@@ -659,7 +932,49 @@ window.__ModuleLoader__.load({
 						}, "▤") : null,
 					),
 				),
+				addOpen ? React.createElement(AddWorkspaceDialog, {
+					picker: addPicker,
+					adoptAndGo,
+					onCancel: () => setAddOpen(false),
+				}) : null,
 			);
+		}
+
+		/** A browse seam over the directory picker, or null when unavailable. */
+		function pickerFace(ctx) {
+			if (!ctx || typeof ctx.get !== "function") return null;
+			try {
+				const uiWorkspace = ctx.get("uiWorkspace");
+				if (uiWorkspace && typeof uiWorkspace.listDirectory === "function" && typeof uiWorkspace.createDirectory === "function") {
+					return {
+						list: (path, signal) => uiWorkspace.listDirectory(path, signal),
+						create: (path, name) => uiWorkspace.createDirectory(path, name),
+					};
+				}
+			} catch {
+				/* uiWorkspace not registered yet */
+			}
+			try {
+				const remote = ctx.get("remote");
+				const picker = remote?.directoryPicker;
+				if (picker && typeof picker.list === "function" && typeof picker.createDirectory === "function") {
+					return {
+						list: async (path, signal) => {
+							const result = await picker.list(path, signal);
+							if (!result || result.ok !== true) throw new Error(result?.error?.message ?? "Could not list the folder.");
+							return result.value;
+						},
+						create: async (path, name) => {
+							const result = await picker.createDirectory(path, name);
+							if (!result || result.ok !== true) throw new Error(result?.error?.message ?? "Could not create the folder.");
+							return result.value;
+						},
+					};
+				}
+			} catch {
+				/* remote seam absent */
+			}
+			return null;
 		}
 
 		const inject = ["slots", "sessions", "workspaces"];
@@ -682,6 +997,7 @@ window.__ModuleLoader__.load({
 				filteredView: null,
 				shadowError: null,
 				revisionBump: null,
+				getPicker: () => pickerFace(ctx),
 			};
 			shared.filteredView = createFilteredView(shared.services, selection);
 			const ScopedWorkspaceBrowser = createScopedBrowser(shared);
@@ -808,6 +1124,10 @@ window.__ModuleLoader__.load({
 		exports.makeSelectorHook = makeSelectorHook;
 		exports.createFilteredView = createFilteredView;
 		exports.createScopedBrowser = createScopedBrowser;
+		exports.addRowsFiltered = addRowsFiltered;
+		exports.adoptTarget = adoptTarget;
+		exports.findWorkspaceByPath = findWorkspaceByPath;
+		exports.AddWorkspaceDialog = AddWorkspaceDialog;
 		exports.WorkspaceTabs = WorkspaceTabs;
 		exports.apply = apply;
 		exports.inject = inject;

@@ -406,3 +406,31 @@ test("apply registers tabs and shadows the native browser entry", () => {
 	assert.deepEqual(rendered.props.useSessions((state) => state.ids), []);
 	assert.deepEqual(rendered.props.useWorkspaces((state) => state.items), []);
 });
+
+test("add-workspace helpers filter rows and pick the adopt target", () => {
+	const rows = [
+		{ name: "alpha", path: "/home/u/alpha", hidden: false },
+		{ name: ".git", path: "/home/u/.git", hidden: true },
+		{ name: ".config", path: "/home/u/.config", hidden: true },
+	];
+	assert.deepEqual(exports.addRowsFiltered(rows, false).map((row) => row.name), ["alpha"]);
+	assert.deepEqual(exports.addRowsFiltered(rows, true).map((row) => row.name), ["alpha", ".git", ".config"]);
+	assert.deepEqual(exports.addRowsFiltered(null, true), []);
+
+	assert.equal(exports.adoptTarget(null, "/home/u"), "/home/u");
+	assert.equal(exports.adoptTarget("/home/u/alpha", null), "/home/u/alpha");
+	assert.equal(exports.adoptTarget(null, null), null);
+
+	const items = [
+		workspace({ workspaceId: "w1", path: "/p/one" }),
+		workspace({ workspaceId: "w2", path: "/p/two" }),
+	];
+	assert.equal(exports.findWorkspaceByPath(items, "/p/two")?.workspaceId, "w2");
+	assert.equal(exports.findWorkspaceByPath(items, "/p/three"), null);
+	assert.equal(exports.findWorkspaceByPath(items, null), null);
+	assert.equal(exports.findWorkspaceByPath([], "/p/one"), null);
+});
+
+test("the tab bar declares the add-workspace entry point", () => {
+	assert.equal(typeof exports.AddWorkspaceDialog, "function");
+});

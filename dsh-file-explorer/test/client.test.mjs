@@ -40,12 +40,16 @@ function assert(cond, label) {
 	}
 }
 
-assert(exports.joinRel("", "a") === "a", "join at root");
-assert(exports.joinRel("src", "a.txt") === "src/a.txt", "join nested");
-assert(exports.parentRel("src/lib") === "src", "parent nested");
-assert(exports.parentRel("src") === "", "parent of one segment is root");
-assert(exports.parentRel("") === "", "parent of root is root");
-assert(exports.splitRel("a/b/c").join(",") === "a,b,c", "split rel");
+assert(exports.joinRel("", "a") === "a", "join at empty dir");
+assert(exports.joinRel("/", "a") === "/a", "join at filesystem root");
+assert(exports.joinRel("/ws", "a.txt") === "/ws/a.txt", "join nested");
+assert(exports.joinRel("/ws/lib", "a.txt") === "/ws/lib/a.txt", "join under absolute dir");
+assert(exports.parentRel("/ws/lib") === "/ws", "parent of nested dir");
+assert(exports.parentRel("/ws") === "/", "parent of top dir is the filesystem root");
+assert(exports.parentRel("/") === "/", "filesystem root has no parent");
+assert(exports.parentRel("") === "", "empty dir parent is empty");
+assert(exports.splitRel("/a/b/c").join(",") === "a,b,c", "split absolute path");
+assert(exports.splitRel("/").join(",") === "", "split root yields no segments");
 assert(exports.formatBytes(0) === "0 B", "0 bytes");
 assert(exports.formatBytes(1023) === "1023 B", "bytes under 1K");
 assert(exports.formatBytes(1024) === "1 KB", "1 KB");
